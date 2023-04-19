@@ -125,10 +125,10 @@ gamesell(unsigned int i, unsigned int a)
 	return t;
 }
 
-MarketType
+Market
 genmarket(uint8_t fluct, Planet p)
 {
-	MarketType market;
+	Market market;
 	for (int i = 0; i <= LAST_TRADE; i++) {
 		signed int q; 
 		signed int product = p.economy * commodities[i].gradient;
@@ -234,7 +234,7 @@ nextgalaxy(Seed *s) /* Apply to base seed; once for galaxy 2 */
 
 /* Original game generated from scratch each time info needed */
 void
-buildgalaxy(unsigned int galaxy_index)
+buildgalaxy(uint8_t galaxy_index)
 {
 	/* Initialise seed for galaxy 1 */
 	seed.w0 = base0; seed.w1 = base1; seed.w2 = base2;
@@ -328,7 +328,7 @@ dolocal(char *s)
 }
 
 bool
-dojump(char *s) /* Jump to planet name s */
+dojump(char *s) /* Jump to planet name 's' */
 {
 	unsigned int d;
 	int dest = matchplanet(s);
@@ -348,14 +348,14 @@ dojump(char *s) /* Jump to planet name s */
 }
 
 bool
-dosneak(char *s) /* As 'dojump' but no fuel cost */
+dosneak(char *s) /* Like 'dojump' but no fuel cost */
 {
-	bool b;
+	bool sneaked;
 	unsigned int fuelkeep = fuel;
-	fuel = 666;
-	b = dojump(s);
+	fuel = -1;
+	sneaked = dojump(s);
 	fuel = fuelkeep;
-	return b;
+	return sneaked;
 }
 
 bool
@@ -486,8 +486,9 @@ bool
 domarket(char *s)
 {
 	(void)(&s);
+	/* Name Price Quantity/Available Load */
 	for (int i = 0; i <= LAST_TRADE; i++)
-		printf("%s%6.1f%8u%-4s%4u\n", 
+		printf("%-14s%6.1f%8u%-4s%4u\n", 
 			commodities[i].name, 
 			(float)(localmarket.price[i])/10, 
 			localmarket.quantity[i], 
@@ -639,10 +640,10 @@ main(void)
 
 	for (;;) {
 		printf("\n$%.1f> ", (float)cash/10);
-		if (fgets(com, MAXLEN, stdin) != NULL) {
-			com[strcspn(com, "\n")] = 0;
+		fgets(com, MAXLEN, stdin);
+		com[strcspn(com, "\n")] = '\0';
+		if (*com)
 			parser(com);
-		}
 	}
 	/* Unreachable */
 	return 0;

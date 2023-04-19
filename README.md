@@ -1,6 +1,8 @@
 # Text Elite
-[Ian Bell's Text Elite](http://www.iancgbell.clara.net/elite/text/)\
+[Ian Bell's Text Elite](http://www.iancgbell.clara.net/elite/text/) 
 source code fixed, cleaned, and ported to C99.
+
+**See also**: [Go implementation](https://github.com/andrewsjg/GoElite/)
 
 ## Comments
 The nature of basic mechanisms used to generate the Elite socio-economic
@@ -35,6 +37,3 @@ extremely frequent and exploited.
 Item prices are held internally in a single byte=true value/4.
 The decimal point in prices is introduced only when printing them.
 Internally, all prices are integers. The player's cash is held in four bytes.
-
-**See also**:\
-[Go implementation](https://github.com/andrewsjg/GoElite/)
