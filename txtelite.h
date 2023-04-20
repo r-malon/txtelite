@@ -28,13 +28,13 @@ typedef struct {
 
 typedef struct {
 	unsigned int x;
-	unsigned int y;       /* One byte unsigned */
-	unsigned int economy; /* These two are actually only 0-7 */
-	unsigned int govtype;   
-	unsigned int techlev; /* 0-16 I think */
-	unsigned int population;   /* One byte */
-	unsigned int productivity; /* Two byte */
-	unsigned int radius; /* Two byte (not used at all) */
+	unsigned int y;				/* One byte unsigned */
+	unsigned int economy;		/* These two are actually only 0-7 */
+	unsigned int govtype;
+	unsigned int techlev;		/* 0-16 I think */
+	unsigned int population;	/* One byte */
+	unsigned int productivity;	/* Two byte */
+	unsigned int radius;		/* Two byte (not used at all) */
 	FastSeed	goatsoupseed;
 	char name[12];
 } Planet;
@@ -64,7 +64,7 @@ uint8_t galaxy_index;					/* Galaxy number (1-8) */
 int32_t cash;
 unsigned int fuel;
 unsigned int holdspace;
-Market localmarket;
+Market localmarket; /* If declared further up, 'cash' bugs */
 
 unsigned int fuelcost = 2; /* 0.2 CR/LY */
 unsigned int maxfuel = 70; /* 7.0 LY tank */
@@ -130,7 +130,7 @@ Item commodities[] = {
 };
 
 /**-Required data for text interface **/
-char tradnames[LAST_TRADE][MAXLEN];
+char item_names[LAST_TRADE][MAXLEN];
 /* Item names used in text commands, set using commodities array */
 
 
