@@ -29,7 +29,7 @@ tweakseed(Seed *s)
 /**-String functions for text interface **/
 
 void
-stripout(char *s, const char c) /* Remove every 'c' from string 's' */
+stripout(char *s, char c) /* Remove every 'c' from string 's' */
 {
 	char *r = s, *w = s;
 	while (*r) {
@@ -40,7 +40,7 @@ stripout(char *s, const char c) /* Remove every 'c' from string 's' */
 }
 
 bool
-stringbegins(char *s, char *t)
+stringbegins(const char *s, const char *t)
 /* Return true iff string 't' begins with non-empty string 's' */
 {
 	size_t i = 0, l = strlen(s);
@@ -50,7 +50,7 @@ stringbegins(char *s, char *t)
 }
 
 unsigned int
-stringmatch(char *s, char a[][MAXLEN], unsigned int n)
+stringmatch(const char *s, const char *a[], unsigned int n)
 /* Check string 's' against 'n' options in string array 'a'
 	If ith element is matched return i + 1 else return 0 */
 {
@@ -64,21 +64,21 @@ stringmatch(char *s, char a[][MAXLEN], unsigned int n)
 }
 
 void
-spacesplit(char *s, char *t)
-/* Split string 's' at first space,
+split(char *s, char *t, char c)
+/* Split string 's' at first 'c',
 	returning first word in 't' and shortening 's' */
 {
 	size_t i = 0, j = 0;
 	size_t l = strlen(s);
 	while (i < l && s[i] == ' ')
-		i++; /* Strip leading spaces */
+		i++;	/* Strip leading spaces */
 
 	if (i == l) {
 		s[0] = 0; t[0] = 0;
 		return;
 	}
 
-	while (i < l && s[i] != ' ')
+	while (i < l && s[i] != c)
 		t[j++] = s[i++];
 
 	t[j] = 0; i++; j = 0;
@@ -126,12 +126,13 @@ gamesell(unsigned int i, unsigned int a)
 }
 
 Market
-genmarket(uint8_t fluct, Planet p)
+genmarket(uint8_t fluct, const Planet *p)
 {
 	Market market;
-	for (int i = 0; i <= LAST_TRADE; i++) {
+	unsigned int i;
+	for (i = 0; i < N_ITEMS; i++) {
 		signed int q; 
-		signed int product = p.economy * commodities[i].gradient;
+		signed int product = p->eco * commodities[i].gradient;
 		signed int changing = fluct & commodities[i].maskbyte;
 		q = commodities[i].basequant + changing - product;
 		q = q & 0xFF;
@@ -144,66 +145,63 @@ genmarket(uint8_t fluct, Planet p)
 		q = q & 0xFF;
 		market.price[i] = (uint16_t)(q * 4);
 	}
-	market.quantity[LAST_TRADE] = 0; /* Override to force non-availability */
+	/* Override to force non-availability */
+	market.quantity[ALIEN_ITEMS_INDEX] = 0;
 	return market;
 }
 
 Planet
 makeplanet(Seed *s) /* Generate planet info from seed */
 {
-	Planet thissys;
+	Planet p;
 	unsigned int pair1, pair2, pair3, pair4;
-	uint16_t longnameflag = (s->w0) & 0x40;
+	bool longnameflag = (s->w0) & 0x40;
 
-	thissys.x = (s->w1) >> 8;
-	thissys.y = (s->w0) >> 8;
+	p.x = (s->w1) >> 8;
+	p.y = (s->w0) >> 8;
 
-	thissys.govtype = ((s->w1) >> 3) & 7; /* bits 3, 4 and 5 of w1 */
+	p.gov = ((s->w1) >> 3) & 7; /* bits 3, 4 and 5 of w1 */
+	p.eco = ((s->w0) >> 8) & 7; /* bits 8, 9 and A of w0 */
 
-	thissys.economy = ((s->w0) >> 8) & 7; /* bits 8, 9 and A of w0 */
-	if (thissys.govtype <= 1)
-		thissys.economy = thissys.economy | 2;
+	if (p.gov <= 1)
+		p.eco = p.eco | 2;
 
-	thissys.techlev = (((s->w1) >> 8) & 3) + (thissys.economy ^ 7);
-	thissys.techlev += thissys.govtype >> 1;
-	if ((thissys.govtype & 1) == 1)
-		thissys.techlev++;
+	p.tech = (((s->w1) >> 8) & 3) + (p.eco ^ 7);
+	p.tech += p.gov >> 1;
+	if (p.gov & 1)
+		p.tech++;
 	/* C simulation of 6502's LSR then ADC */
 
-	thissys.population = 4 * thissys.techlev + thissys.economy;
-	thissys.population += thissys.govtype + 1;
+	p.pop = 4 * p.tech + p.eco + p.gov + 1;
+	p.prod = ((p.eco ^ 7) + 3) * (p.gov + 4) * p.pop * 8;
+	p.radius = 0x100 * ((((s->w2) >> 8) & 0x0F) + 11) + p.x;
 
-	thissys.productivity = ((thissys.economy ^ 7) + 3) * (thissys.govtype + 4);
-	thissys.productivity *= thissys.population * 8;
+	p.goatsoupseed.a = s->w1 & 0xFF;
+	p.goatsoupseed.b = s->w1 >> 8;
+	p.goatsoupseed.c = s->w2 & 0xFF;
+	p.goatsoupseed.d = s->w2 >> 8;
 
-	thissys.radius = 0x100 * ((((s->w2) >> 8) & 0x0F) + 11) + thissys.x;
-
-	thissys.goatsoupseed.a = s->w1 & 0xFF;
-	thissys.goatsoupseed.b = s->w1 >> 8;
-	thissys.goatsoupseed.c = s->w2 & 0xFF;
-	thissys.goatsoupseed.d = s->w2 >> 8;
-
-	/* Always four iterations of random number */
+	/* Always 4 iterations of random number */
 	pair1 = 2 * (((s->w2) >> 8) & 0x1F); tweakseed(s);
 	pair2 = 2 * (((s->w2) >> 8) & 0x1F); tweakseed(s);
 	pair3 = 2 * (((s->w2) >> 8) & 0x1F); tweakseed(s);
 	pair4 = 2 * (((s->w2) >> 8) & 0x1F); tweakseed(s);
 
-	(thissys.name)[0] = pairs[pair1];
-	(thissys.name)[1] = pairs[pair1 + 1];
-	(thissys.name)[2] = pairs[pair2];
-	(thissys.name)[3] = pairs[pair2 + 1];
-	(thissys.name)[4] = pairs[pair3];
-	(thissys.name)[5] = pairs[pair3 + 1];
+	(p.name)[0] = pairs[pair1];
+	(p.name)[1] = pairs[pair1 + 1];
+	(p.name)[2] = pairs[pair2];
+	(p.name)[3] = pairs[pair2 + 1];
+	(p.name)[4] = pairs[pair3];
+	(p.name)[5] = pairs[pair3 + 1];
 
 	if (longnameflag) {
-		(thissys.name)[6] = pairs[pair4];
-		(thissys.name)[7] = pairs[pair4 + 1];
-		(thissys.name)[8] = 0;
-	} else (thissys.name)[6] = 0;
+		(p.name)[6] = pairs[pair4];
+		(p.name)[7] = pairs[pair4 + 1];
+		(p.name)[8] = 0;
+	} else (p.name)[6] = 0;
 
-	stripout(thissys.name, '.');
-	return thissys;
+	stripout(p.name, '.');
+	return p;
 }
 
 
@@ -213,8 +211,7 @@ makeplanet(Seed *s) /* Generate planet info from seed */
 uint16_t
 lrotate(uint16_t x) /* rotate 8-bit(?) number leftwards */
 {
-	uint16_t temp = x & 0x80;
-	return (2 * (x & 0x7F)) + (temp >> 7);
+	return (2 * (x & 0x7F)) + ((x & 0x80) >> 7);
 }
 
 uint16_t
@@ -235,12 +232,13 @@ nextgalaxy(Seed *s) /* Apply to base seed; once for galaxy 2 */
 void
 buildgalaxy(uint8_t galaxy_index)
 {
+	unsigned int galcount, pcount;
 	/* Initialise seed for galaxy 1 */
 	seed.w0 = base0; seed.w1 = base1; seed.w2 = base2;
-	for (unsigned int galcount = 1; galcount < galaxy_index; ++galcount)
+	for (galcount = 1; galcount < galaxy_index; ++galcount)
 		nextgalaxy(&seed);
 	/* Put galaxy data into array of structures */  
-	for (int pcount = 0; pcount < GALAXY_SIZE; ++pcount)
+	for (pcount = 0; pcount < GALAXY_SIZE; ++pcount)
 		galaxies[pcount] = makeplanet(&seed);
 }
 
@@ -250,13 +248,13 @@ void
 gamejump(int i) /* Move to planet index 'i' */
 {
 	curr_planet = i;
-	localmarket = genmarket(rand() % 0x100, galaxies[i]);
+	localmarket = genmarket(rand() % 0x100, &galaxies[i]);
 }
 
 unsigned int
-distance(Planet a, Planet b)
+distance(Planet *a, Planet *b)
 {
-	int xdelta = a.x - b.x, ydelta = a.y - b.y;
+	int xdelta = a->x - b->x, ydelta = a->y - b->y;
 	return 4 * sqrt(xdelta * xdelta + ydelta * ydelta / 4);
 }
 
@@ -267,11 +265,12 @@ matchplanet(char *s)
 	closest to 'curr_planet' - if none return 'curr_planet' */
 {
 	int p = curr_planet;
-	unsigned int d = 9999;
-	for (int pcount = 0; pcount < GALAXY_SIZE; ++pcount) {
+	unsigned int max_dist = -1, curr_dist, pcount;
+	for (pcount = 0; pcount < GALAXY_SIZE; ++pcount) {
 		if (stringbegins(s, galaxies[pcount].name)) {
-		 	if (distance(galaxies[pcount], galaxies[curr_planet]) < d) {
-		 		d = distance(galaxies[pcount], galaxies[curr_planet]);
+			curr_dist = distance(&galaxies[pcount], &galaxies[curr_planet]);
+		 	if (curr_dist < max_dist) {
+		 		max_dist = curr_dist;
 				p = pcount;
 			}
 		}
@@ -280,28 +279,27 @@ matchplanet(char *s)
 }
 
 void
-printplanet(Planet p, bool brief)
+printplanet(const Planet *p, bool brief)
 {
 	if (brief) {
-		printf("%10s TL: %2i %12s %15s", 
-			p.name, p.techlev + 1, 
-			econnames[p.economy], govnames[p.govtype]);
+		printf("%12s TL: %2i %12s %16s", 
+			p->name, p->tech + 1, 
+			econnames[p->eco], govnames[p->gov]);
 	} else {
 		printf(
-			"Planet: %s"
-			"\nPosition (%i), %i"
+			"Data on %s (%i, %i)"
 			"\nEconomy: (%i) %s"
 			"\nGovernment: (%i) %s"
 			"\nTech Level: %2i"
-			"\nTurnover: %u"
-			"\nRadius: %u"
-			"\nPopulation: %u billion\n", 
-			p.name, p.x, p.y, p.economy, econnames[p.economy], 
-			p.govtype, govnames[p.govtype], p.techlev + 1, p.productivity, 
-			p.radius, p.population >> 3
+			"\nTurnover: %u Mcr"
+			"\nRadius: %u km"
+			"\nPopulation: %.1f Billion\n", 
+			p->name, p->x, p->y, p->eco, econnames[p->eco], 
+			p->gov, govnames[p->gov], p->tech + 1, p->prod, 
+			p->radius, (float)p->pop / 10
 		);
-		rnd_seed = p.goatsoupseed;
-		goat_soup("\x8F is \x97.", &p);
+		rnd_seed = p->goatsoupseed;
+		goat_soup("\x8E is \x96.", p);
 	}
 }
 
@@ -310,18 +308,18 @@ printplanet(Planet p, bool brief)
 bool
 dolocal(char *s)
 {
-	unsigned int d;
+	unsigned int d, pcount;
 	(void)(&s);
 	printf("Galaxy #%i\n", galaxy_index);
-	for (int pcount = 0; pcount < GALAXY_SIZE; ++pcount) {
-		d = distance(galaxies[pcount], galaxies[curr_planet]);
+	for (pcount = 0; pcount < GALAXY_SIZE; ++pcount) {
+		d = distance(&galaxies[pcount], &galaxies[curr_planet]);
 		if (d <= maxfuel) {
 			if (d <= fuel)
 				putchar('*');
 			else
 				putchar('-');
-			printplanet(galaxies[pcount], true);
-			printf("  (%.1fLY)\n", (float)d/10);
+			printplanet(&galaxies[pcount], true);
+			printf("  (%.1fLY)\n", (float)d / 10);
 		}
 	}
 	return true;
@@ -336,14 +334,14 @@ dojump(char *s) /* Jump to planet name 's' */
 		puts("Bad jump");
 		return false;
 	}
-	d = distance(galaxies[dest], galaxies[curr_planet]);
+	d = distance(&galaxies[dest], &galaxies[curr_planet]);
 	if (d > fuel) {
 		puts("Jump too far");
 		return false;
 	}
 	fuel -= d;
 	gamejump(dest);
-	printplanet(galaxies[curr_planet], false);
+	printplanet(&galaxies[curr_planet], false);
 	return true;
 }
 
@@ -364,7 +362,7 @@ dogalhyp(char *s) /* Jump to next galaxy */
 	Classic Elite always jumped to nearest planet (0x60, 0x60) */
 {
 	(void)(&s);
-	if (++galaxy_index == 9)
+	if (++galaxy_index > 8)
 		galaxy_index = 1;
 	buildgalaxy(galaxy_index);
 	return true;
@@ -374,15 +372,15 @@ bool
 doinfo(char *s)
 {
 	int dest = matchplanet(s);
-	printplanet(galaxies[dest], false);
+	printplanet(&galaxies[dest], false);
 	return true;
 }
 
 bool
 dohold(char *s)
 {
-	unsigned int a = atoi(s), t = 0;
-	for (int i = 0; i <= LAST_TRADE; i++) {
+	unsigned int a = atoi(s), t = 0, i;
+	for (i = 0; i < N_ITEMS; i++) {
 		if (commodities[i].unit == TONNE)
 			t += shipshold[i];
 	}
@@ -399,18 +397,16 @@ dosell(char *s) /* Sell amount S(2) of good S(1) */
 {
 	unsigned int i, a, t;
 	char s2[MAXLEN];
-	spacesplit(s, s2);
+	split(s, s2, ' ');
 	a = atoi(s);
 	if (a == 0)
 		a = 1;
-	i = stringmatch(s2, item_names, LAST_TRADE + 1);
+	i = stringmatch(s2, item_names, N_ITEMS);
 	if (i == 0) {
 		puts("Unknown item");
 		return false;
 	}
-	i -= 1;
-	t = gamesell(i, a);
-
+	t = gamesell(--i, a);
 	if (t == 0)
 		fputs("Can't sell any ", stdout);
 	else
@@ -424,18 +420,16 @@ dobuy(char *s) /* Buy amount S(2) of good S(1) */
 {
 	unsigned int i, a, t;
 	char s2[MAXLEN];
-	spacesplit(s, s2);
+	split(s, s2, ' ');
 	a = atoi(s);
 	if (a == 0)
 		a = 1;
-	i = stringmatch(s2, item_names, LAST_TRADE + 1);
+	i = stringmatch(s2, item_names, N_ITEMS);
 	if (i == 0) {
 		puts("Unknown item");
 		return false;
 	}
-	i -= 1;
-	t = gamebuy(i, a);
-
+	t = gamebuy(--i, a);
 	if (t == 0)
 		fputs("Can't buy any ", stdout);
 	else
@@ -465,7 +459,7 @@ dofuel(char *s)
 		fputs("Can't buy any fuel", stdout);
 		return false;
 	}
-	printf("Buying %.1fLY fuel", (float)f/10);
+	printf("Buying %.1fLY fuel", (float)f / 10);
 	return true;
 }
 
@@ -484,30 +478,31 @@ docash(char *s) /* Cheat alter cash by 's' */
 bool
 domarket(char *s)
 {
+	unsigned int i;
 	(void)(&s);
-	printf("%-14s%-7s%-8s%8s\n", "Name", "Price", "Quantity", "Loaded");
-	for (int i = 0; i <= LAST_TRADE; i++)
-		printf("%-14s%6.1f%8u%-4s%5u\n", 
+	printf("%-16s%-8s%-8s%8s\n", "Name", "Price", "Quantity", "Loaded");
+	for (i = 0; i < N_ITEMS; i++)
+		printf("%-16s%5.1f%10u%-4s%5u\n", 
 			commodities[i].name, 
-			(float)(localmarket.price[i])/10, 
+			(float)(localmarket.price[i]) / 10, 
 			localmarket.quantity[i], 
 			unitnames[commodities[i].unit], 
 			shipshold[i]
 		);
-	printf("\nFuel: %-17.1fHoldspace: %it", (float)fuel/10, holdspace);
+	printf("\nFuel: %-17.1fHoldspace: %it", (float)fuel / 10, holdspace);
 	return true;
 }
 
 bool
-parser(char *s) /* Parse and execute command 's' */
+parse(char *s) /* Parse and execute command 's' */
 {
 	unsigned int i;
-	char c[MAXLEN];
-	spacesplit(s, c);
-	i = stringmatch(c, commands, N_COMMANDS);
+	char com[MAXLEN];
+	split(s, com, ' ');
+	i = stringmatch(com, commands, N_COMMANDS);
 	if (i)
 		return (*comfuncs[i - 1])(s);
-	printf("Bad command: %s", c);
+	printf("Bad command: %s", com);
 	return false;
 }
 
@@ -563,38 +558,39 @@ gen_rnd_number(void)
 }
 
 void
-goat_soup(const char *source, Planet *p)
+goat_soup(const char *s, const Planet *p)
 {
-	for (uint8_t c = *source; c != '\0'; c = *++source) {
+	uint8_t c;
+	for (c = *s; c != '\0'; c = *++s) {
 		if (c < 0x80) {
 			putchar(c);
 		} else {
-			if (c <= 0xA4) {
-				int rnd = gen_rnd_number();
-				goat_soup(desc_list[c - 0x81].option[(rnd * 5) / 0xFF], p);
-			} else switch(c) {
-				case 0xB0: /* planet name */ {
-					int i = 1;
+			c ^= 0x80;
+			if (c < N_DESC) {
+				int r = gen_rnd_number();
+				goat_soup(descriptions[c][(r * N_OPTIONS) / 0xFF], p);
+			} else switch(c ^ 0x80) {
+				case 0xF0: /* planet name */ {
+					unsigned int i = 1;
 					putchar(p->name[0]);
 					while (p->name[i] != '\0')
 						putchar(tolower(p->name[i++]));
 				}	break;
-				case 0xB1: /* <planet name>ian */ {
-					int i = 1;
+				case 0xF1: /* <planet name>ian */ {
+					unsigned int i = 1;
 					putchar(p->name[0]);
 					while (p->name[i] != '\0') {
 						if (p->name[i + 1] != '\0' 
-						  || (p->name[i] != 'E' 
-						  && p->name[i] != 'I'))
+						  || (p->name[i] != 'E' && p->name[i] != 'I'))
 							putchar(tolower(p->name[i]));
 						i++;
 					}
 					fputs("ian", stdout);
 				}	break;
-				case 0xB2: /* random name */ {
-					int len = gen_rnd_number() & 3;
-					for (int i = 0; i <= len; i++) {
-						int x = gen_rnd_number() & 0x3E;
+				case 0xF2: /* random name */ {
+					unsigned int i, x, len = gen_rnd_number() & 3;
+					for (i = 0; i <= len; i++) {
+						x = gen_rnd_number() & 0x3E;
 						if (i == 0)
 							putchar(pairs0[x]);
 						else
@@ -618,30 +614,27 @@ main(void)
 
 	srand(time(NULL));
 
-	for (int i = 0; i <= LAST_TRADE; i++)
-		strcpy(item_names[i], commodities[i].name);
-
 	galaxy_index = 1;
 	buildgalaxy(galaxy_index);
 
 	curr_planet = Lave_INDEX;	/* Don't use jump */
-	localmarket = genmarket(0x00, galaxies[Lave_INDEX]);
+	localmarket = genmarket(0x00, &galaxies[Lave_INDEX]);
 	fuel = maxfuel;
 
 	puts("Welcome to Text Elite 1.5.\n");
 
-#define PARSER(S) { strcpy(buf, S); parser(buf); }
-	PARSER("hold 20");		/* Small cargo bay */
-	PARSER("cash +100");	/* 100 CR */
-	PARSER("help");
-#undef PARSER
+#define PARSE(S) { strcpy(buf, S); parse(buf); }
+	PARSE("hold 20");		/* Small cargo bay */
+	PARSE("cash +100");		/* 100 CR */
+	PARSE("help");
+#undef PARSE
 
 	for (;;) {
-		printf("\n$%.1f> ", (float)cash/10);
+		printf("\n$%.1f>", (float)cash / 10);
 		fgets(com, MAXLEN, stdin);
 		com[strcspn(com, "\n")] = '\0';
 		if (*com)
-			parser(com);
+			parse(com);
 	}
 	/* Unreachable */
 	return 0;

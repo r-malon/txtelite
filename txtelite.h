@@ -1,43 +1,19 @@
 #ifndef TXTELITE_H
 #define TXTELITE_H
 
-#define MAXLEN (20) /* Length of strings */
-#define GALAXY_SIZE (256)
-#define LAST_TRADE (16)
+#define MAXLEN 20 /* Length of strings */
+#define GALAXY_SIZE 256
 
-#ifndef MIN
 #define MIN(x, y) (((x) < (y)) ? (x) : (y))
-#endif
 
 enum {
 	Lave_INDEX=7,	/* Lave is 7th generated planet in galaxy one */
 	Zaonce_INDEX=129,
 	Diso_INDEX=147,
-	Ried_INDEX=46
+	Ried_INDEX=46,
 };
 
 enum Unit { TONNE, KILO, GRAM };
-
-typedef struct {
-	uint8_t a, b, c, d;
-} FastSeed;  /* four byte random number used for planet description */
-
-typedef struct {
-	uint16_t w0, w1, w2;
-} Seed;  /* six byte random number used as seed for planets */
-
-typedef struct {
-	unsigned int x;
-	unsigned int y;				/* One byte unsigned */
-	unsigned int economy;		/* These two are actually only 0-7 */
-	unsigned int govtype;
-	unsigned int techlev;		/* 0-16 I think */
-	unsigned int population;	/* One byte */
-	unsigned int productivity;	/* Two byte */
-	unsigned int radius;		/* Two byte (not used at all) */
-	FastSeed	goatsoupseed;
-	char name[12];
-} Planet;
 
 typedef struct {
 	unsigned int baseprice;
@@ -48,54 +24,97 @@ typedef struct {
 	char name[MAXLEN]; /* longest="Radioactives" */
 } Item;
 
+#define I(index, name, baseprice, grad, basequant, mask, unit) index, 
+enum ItemIndex {
+	#include "items.tbl"
+};
+#undef I
+
+#define I(index, name, baseprice, grad, basequant, mask, unit) name, 
+static const char *item_names[] = {
+	#include "items.tbl"
+};
+#undef I
+
+#define I(index, name, baseprice, grad, basequant, mask, unit) \
+	{baseprice, grad, basequant, mask, unit, name}, 
+static const Item commodities[] = {
+	#include "items.tbl"
+};
+#undef I
+
+#define N_ITEMS (sizeof commodities / sizeof (Item))
+
 typedef struct {
-	unsigned int quantity[LAST_TRADE + 1];
-	unsigned int price[LAST_TRADE + 1];
+	uint8_t a, b, c, d;
+} FastSeed;	/* four byte random number used for planet description */
+
+typedef struct {
+	uint16_t w0, w1, w2;
+} Seed;	/* six byte random number used as seed for planets */
+
+typedef struct {
+	uint8_t x;
+	uint8_t y;
+	uint8_t eco;	/* These two are actually only 0-7 */
+	uint8_t gov;
+	uint8_t tech;	/* 0-16 */
+	uint8_t pop;
+	uint16_t prod;
+	uint16_t radius;	/* Not used at all */
+	FastSeed	goatsoupseed;
+	char name[12];
+} Planet;
+
+typedef struct {
+	unsigned int quantity[N_ITEMS];
+	unsigned int price[N_ITEMS];
 } Market;
 
-Planet galaxies[GALAXY_SIZE]; /* Need 0 to GALAXY_SIZE-1 inclusive */
+Planet galaxies[GALAXY_SIZE];
 Seed seed;
 FastSeed rnd_seed;
 
 /* Player workspace */
-unsigned int shipshold[LAST_TRADE + 1];	/* Contents of cargo bay */
-int curr_planet;						/* Current planet */
-uint8_t galaxy_index;					/* Galaxy number (1-8) */
+unsigned int shipshold[N_ITEMS];	/* Contents of cargo bay */
+int curr_planet;					/* Current planet */
+uint8_t galaxy_index;				/* Galaxy number (1-8) */
 int32_t cash;
 unsigned int fuel;
 unsigned int holdspace;
-Market localmarket; /* If declared further up, 'cash' bugs */
+Market localmarket;			/* If declared further up, 'cash' bugs */
 
 unsigned int fuelcost = 2; /* 0.2 CR/LY */
 unsigned int maxfuel = 70; /* 7.0 LY tank */
 
-const uint16_t base0 = 0x5A4A;
-const uint16_t base1 = 0x0248;
-const uint16_t base2 = 0xB753;	/* Base seed for galaxy 1 */
+static const uint16_t base0 = 0x5A4A;
+static const uint16_t base1 = 0x0248;
+static const uint16_t base2 = 0xB753;	/* Base seed for galaxy 1 */
 
-char unitnames[][3] = {"t", "kg", "g"};
+static const char *unitnames[] = {"t", "kg", "g"};
 
-char pairs0[] = 
+static const char *pairs0 = 
 "ABOUSEITILETSTONLONUTHNOALLEXEGEZACEBISOUSES"
 "ARMAINDIREA.ERATENBERALAVETIEDORQUANTEISRION";
 
-char pairs[] = 
+static const char *pairs = 
 "..LEXEGEZACEBISO"
 "USESARMAINDIREA."
 "ERATENBERALAVETI"
 "EDORQUANTEISRION"; /* Dots should be nullprint characters */
 
-char govnames[][MAXLEN] = {
+/* From most dangerous to safest */
+static const char *govnames[] = {
 	"Anarchy",
 	"Feudal",
-	"Multi-Gov",
+	"Multi-Government",
 	"Dictatorship",
 	"Communist",
 	"Confederacy",
 	"Democracy",
 	"Corporate State"
 };
-char econnames[][MAXLEN] = {
+static const char *econnames[] = {
 	"Rich Ind",
 	"Average Ind",
 	"Poor Ind",
@@ -106,35 +125,7 @@ char econnames[][MAXLEN] = {
 	"Poor Agri"
 };
 
-/* Data for DB's price/availability generation system */
-/* Base  Grad Base Mask Un   Name
-	price ient quant     it */
-Item commodities[] = {
-	{0x13, -0x02, 0x06, 0x01, TONNE, "Food"}, 
-	{0x14, -0x01, 0x0A, 0x03, TONNE, "Textiles"}, 
-	{0x41, -0x03, 0x02, 0x07, TONNE, "Radioactives"}, 
-	{0x28, -0x05, 0xE2, 0x1F, TONNE, "Slaves"}, 
-	{0x53, -0x05, 0xFB, 0x0F, TONNE, "Liquor/Wines"}, 
-	{0xC4, +0x08, 0x36, 0x03, TONNE, "Luxuries"}, 
-	{0xEB, +0x1D, 0x08, 0x78, TONNE, "Narcotics"}, 
-	{0x9A, +0x0E, 0x38, 0x03, TONNE, "Computers"}, 
-	{0x75, +0x06, 0x28, 0x07, TONNE, "Machinery"}, 
-	{0x4E, +0x01, 0x11, 0x1F, TONNE, "Alloys"}, 
-	{0x7C, +0x0d, 0x1D, 0x07, TONNE, "Firearms"}, 
-	{0xB0, -0x09, 0xDC, 0x3F, TONNE, "Furs"}, 
-	{0x20, -0x01, 0x35, 0x03, TONNE, "Minerals"}, 
-	{0x61, -0x01, 0x42, 0x07, KILO, "Gold"}, 
-	{0xAB, -0x02, 0x37, 0x1F, KILO, "Platinum"}, 
-	{0x2D, -0x01, 0xFA, 0x0F, GRAM, "Gem stones"}, 
-	{0x35, +0x0F, 0xC0, 0x07, TONNE, "Alien items"}, 
-};
-
-/**-Required data for text interface **/
-char item_names[LAST_TRADE][MAXLEN];
-/* Item names used in text commands, set using commodities array */
-
-
-#define N_COMMANDS (13)
+#define N_COMMANDS 13
 
 bool dobuy(char *);
 bool dosell(char *);
@@ -149,69 +140,71 @@ bool dolocal(char *);
 bool doinfo(char *);
 bool dogalhyp(char *);
 bool doquit(char *);
-void goat_soup(const char *, Planet *);
 
-char commands[N_COMMANDS][MAXLEN] = {
+static const char *commands[N_COMMANDS] = {
 	"buy",		"sell",		"fuel",		"jump",
 	"cash",		"market",	"help",		"hold",
-	"sneak",	"local",	"info",		"galhyp",	"quit"
+	"sneak",	"local",	"info",		"galhyp",	"quit",
 };
 
 bool (*comfuncs[N_COMMANDS])(char *) = {
 	dobuy,		dosell,		dofuel,		dojump,
 	docash,		domarket,	dohelp,		dohold,
-	dosneak,	dolocal,	doinfo,		dogalhyp,	doquit
+	dosneak,	dolocal,	doinfo,		dogalhyp,	doquit,
 };
 
 /*
 "Goat Soup" planetary description string code
 adapted from Christian Pinder's reverse engineered sources.
 */
-struct desc_choice {
-	const char *option[5];
+void goat_soup(const char *, const Planet *);
+
+#define N_OPTIONS 5
+
+static const char *descriptions[][N_OPTIONS] = {
+/* 80 */	{"fabled", "notable", "well-known", "famous", "noted"},
+/* 81 */	{"very", "mildly", "most", "reasonably", ""},
+/* 82 */	{"ancient", "\x94", "great", "vast", "pink"},
+/* 83 */	{"\x9D \x9C plantations", "mountains", "\x9B", "\x93 forests", "oceans"},
+/* 84 */	{"shyness", "silliness", "mating traditions", "loathing of \x85", "love for \x85"},
+/* 85 */	{"food blenders", "tourists", "poetry", "discos", "\x8D"},
+/* 86 */	{"talking tree", "crab", "bat", "lobst", "\xF2"},
+/* 87 */	{"beset", "plagued", "ravaged", "cursed", "scourged"},
+/* 88 */	{"\x95 civil war", "\x9A \x97 \x98s", "a \x9A disease", "\x95 earthquakes", "\x95 solar activity"},
+/* 89 */	{"its \x82 \x83", "the \xF1 \x97 \x98", "its inhabitants' \x99 \x84", "\xA0", "its \x8C \x8D"},
+/* 8A */	{"juice", "brandy", "water", "brew", "gargle blasters"},
+/* 8B */	{"\xF2", "\xF1 \x98", "\xF1 \xF2", "\xF1 \x9A", "\x9A \xF2"},
+/* 8C */	{"fabulous", "exotic", "hoopy", "unusual", "exciting"},
+/* 8D */	{"cuisine", "night life", "casinos", "sitcoms", " \xA0 "},
+/* 8E */	{"\xF0", "The planet \xF0", "The world \xF0", "This planet", "This world"},
+/* 8F */	{"n unremarkable", " boring", " dull", " tedious", " revolting"},
+/* 90 */	{"planet", "world", "place", "little planet", "dump"},
+/* 91 */	{"wasp", "moth", "grub", "ant", "\xF2"},
+/* 92 */	{"poet", "arts graduate", "yak", "snail", "slug"},
+/* 93 */	{"tropical", "dense", "rain", "impenetrable", "exuberant"},
+/* 94 */	{"funny", "weird", "unusual", "strange", "peculiar"},
+/* 95 */	{"frequent", "occasional", "unpredictable", "dreadful", "deadly"},
+/* 96 */	{"\x81 \x80 for \x89", "\x81 \x80 for \x89 and \x89", "\x87 by \x88", "\x81 \x80 for \x89 but \x87 by \x88", "a\x8F \x90"},
+/* 97 */	{"\x9A", "mountain", "edible", "tree", "spotted"},
+/* 98 */	{"\x9E", "\x9F", "\x86oid", "\x92", "\x91"},
+/* 99 */	{"ancient", "exceptional", "eccentric", "ingrained", "\x94"},
+/* 9A */	{"killer", "deadly", "evil", "lethal", "vicious"},
+/* 9B */	{"parking meters", "dust clouds", "icebergs", "rock formations", "volcanoes"},
+/* 9C */	{"plant", "tulip", "banana", "corn", "\xF2weed"},
+/* 9D */	{"\xF2", "\xF1 \xF2", "\xF1 \x9A", "inhabitant", "\xF1 \xF2"},
+/* 9E */	{"shrew", "beast", "bison", "snake", "wolf"},
+/* 9F */	{"leopard", "cat", "monkey", "goat", "fish"},
+/* A0 */	{"\x8B \x8A", "\xF1 \x9E \xA1", "its \x8C \x9F \xA1", "\xA2 \xA3", "\x8B \x8A"},
+/* A1 */	{"meat", "cutlet", "steak", "burgers", "soup"},
+/* A2 */	{"ice", "mud", "Zero-G", "vacuum", "\xF1 ultra"},
+/* A3 */	{"hockey", "cricket", "karate", "polo", "tennis"},
 };
 
-static struct desc_choice desc_list[] = {
-/* 81 */	{"fabled", "notable", "well-known", "famous", "noted"},
-/* 82 */	{"very", "mildly", "most", "reasonably", ""},
-/* 83 */	{"ancient", "\x95", "great", "vast", "pink"},
-/* 84 */	{"\x9E \x9D plantations", "mountains", "\x9C", "\x94 forests", "oceans"},
-/* 85 */	{"shyness", "silliness", "mating traditions", "loathing of \x86", "love for \x86"},
-/* 86 */	{"food blenders", "tourists", "poetry", "discos", "\x8E"},
-/* 87 */	{"talking tree", "crab", "bat", "lobst", "\xB2"},
-/* 88 */	{"beset", "plagued", "ravaged", "cursed", "scourged"},
-/* 89 */	{"\x96 civil war", "\x9B \x98 \x99s", "a \x9B disease", "\x96 earthquakes", "\x96 solar activity"},
-/* 8A */	{"its \x83 \x84", "the \xB1 \x98 \x99", "its inhabitants' \x9A \x85", "\xA1", "its \x8D \x8E"},
-/* 8B */	{"juice", "brandy", "water", "brew", "gargle blasters"},
-/* 8C */	{"\xB2", "\xB1 \x99", "\xB1 \xB2", "\xB1 \x9B", "\x9B \xB2"},
-/* 8D */	{"fabulous", "exotic", "hoopy", "unusual", "exciting"},
-/* 8E */	{"cuisine", "night life", "casinos", "sitcoms", " \xA1 "},
-/* 8F */	{"\xB0", "The planet \xB0", "The world \xB0", "This planet", "This world"},
-/* 90 */	{"n unremarkable", " boring", " dull", " tedious", " revolting"},
-/* 91 */	{"planet", "world", "place", "little planet", "dump"},
-/* 92 */	{"wasp", "moth", "grub", "ant", "\xB2"},
-/* 93 */	{"poet", "arts graduate", "yak", "snail", "slug"},
-/* 94 */	{"tropical", "dense", "rain", "impenetrable", "exuberant"},
-/* 95 */	{"funny", "weird", "unusual", "strange", "peculiar"},
-/* 96 */	{"frequent", "occasional", "unpredictable", "dreadful", "deadly"},
-/* 97 */	{"\x82 \x81 for \x8A", "\x82 \x81 for \x8A and \x8A", "\x88 by \x89", "\x82 \x81 for \x8A but \x88 by \x89", "a\x90 \x91"},
-/* 98 */	{"\x9B", "mountain", "edible", "tree", "spotted"},
-/* 99 */	{"\x9F", "\xA0", "\x87oid", "\x93", "\x92"},
-/* 9A */	{"ancient", "exceptional", "eccentric", "ingrained", "\x95"},
-/* 9B */	{"killer", "deadly", "evil", "lethal", "vicious"},
-/* 9C */	{"parking meters", "dust clouds", "icebergs", "rock formations", "volcanoes"},
-/* 9D */	{"plant", "tulip", "banana", "corn", "\xB2weed"},
-/* 9E */	{"\xB2", "\xB1 \xB2", "\xB1 \x9B", "inhabitant", "\xB1 \xB2"},
-/* 9F */	{"shrew", "beast", "bison", "snake", "wolf"},
-/* A0 */	{"leopard", "cat", "monkey", "goat", "fish"},
-/* A1 */	{"\x8C \x8B", "\xB1 \x9F \xA2", "its \x8D \xA0 \xA2", "\xA3 \xA4", "\x8C \x8B"},
-/* A2 */	{"meat", "cutlet", "steak", "burgers", "soup"},
-/* A3 */	{"ice", "mud", "Zero-G", "vacuum", "\xB1 ultra"},
-/* A4 */	{"hockey", "cricket", "karate", "polo", "tennis"}
-};
+#define N_DESC (sizeof descriptions / sizeof descriptions[0])
+
 /*
-0xB0 = <planet name>
-0xB1 = <planet name>ian
-0xB2 = <random name>
+0xF0 = <planet name>
+0xF1 = <planet name>ian
+0xF2 = <random name>
 */
 #endif /* TXTELITE_H */
