@@ -16,12 +16,12 @@ enum {
 enum Unit { TONNE, KILO, GRAM };
 
 typedef struct {
-	unsigned int baseprice;
+	uint8_t baseprice;
 	int16_t gradient;
-	unsigned int basequant;
-	uint8_t maskbyte;
+	uint8_t basequant;
+	uint8_t mask;
 	enum Unit unit;
-	char name[MAXLEN]; /* longest="Radioactives" */
+	char *name; /* longest="Radioactives" */
 } Item;
 
 #define I(index, name, baseprice, grad, basequant, mask, unit) index, 
@@ -77,7 +77,7 @@ FastSeed rnd_seed;
 
 /* Player workspace */
 unsigned int shipshold[N_ITEMS];	/* Contents of cargo bay */
-int curr_planet;					/* Current planet */
+unsigned int curr_planet;			/* Current planet */
 uint8_t galaxy_index;				/* Galaxy number (1-8) */
 int32_t cash;
 unsigned int fuel;
@@ -125,8 +125,6 @@ static const char *econnames[] = {
 	"Poor Agri"
 };
 
-#define N_COMMANDS 13
-
 bool dobuy(char *);
 bool dosell(char *);
 bool dofuel(char *);
@@ -141,11 +139,13 @@ bool doinfo(char *);
 bool dogalhyp(char *);
 bool doquit(char *);
 
-static const char *commands[N_COMMANDS] = {
+static const char *commands[] = {
 	"buy",		"sell",		"fuel",		"jump",
 	"cash",		"market",	"help",		"hold",
 	"sneak",	"local",	"info",		"galhyp",	"quit",
 };
+
+#define N_COMMANDS (sizeof commands / sizeof commands[0])
 
 bool (*comfuncs[N_COMMANDS])(char *) = {
 	dobuy,		dosell,		dofuel,		dojump,
@@ -160,6 +160,7 @@ adapted from Christian Pinder's reverse engineered sources.
 void goat_soup(const char *, const Planet *);
 
 #define N_OPTIONS 5
+#define GS_FMT "\x8E is \x96."
 
 static const char *descriptions[][N_OPTIONS] = {
 /* 80 */	{"fabled", "notable", "well-known", "famous", "noted"},

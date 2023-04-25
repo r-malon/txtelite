@@ -20,7 +20,7 @@ void
 tweakseed(Seed *s)
 {
 	uint16_t temp;
-	temp = (s->w0) + (s->w1) + (s->w2); /* 2-byte arithmetic */
+	temp = s->w0 + s->w1 + s->w2; /* 2-byte arithmetic */
 	s->w0 = s->w1;
 	s->w1 = s->w2;
 	s->w2 = temp;
@@ -68,9 +68,8 @@ split(char *s, char *t, char c)
 /* Split string 's' at first 'c',
 	returning first word in 't' and shortening 's' */
 {
-	size_t i = 0, j = 0;
-	size_t l = strlen(s);
-	while (i < l && s[i] == ' ')
+	size_t i = 0, j = 0, l = strlen(s);
+	while (i < l && isspace(s[i]))
 		i++;	/* Strip leading spaces */
 
 	if (i == l) {
@@ -133,7 +132,7 @@ genmarket(uint8_t fluct, const Planet *p)
 	for (i = 0; i < N_ITEMS; i++) {
 		signed int q; 
 		signed int product = p->eco * commodities[i].gradient;
-		signed int changing = fluct & commodities[i].maskbyte;
+		signed int changing = fluct & commodities[i].mask;
 		q = commodities[i].basequant + changing - product;
 		q = q & 0xFF;
 		if (q & 0x80)
@@ -155,18 +154,18 @@ makeplanet(Seed *s) /* Generate planet info from seed */
 {
 	Planet p;
 	unsigned int pair1, pair2, pair3, pair4;
-	bool longnameflag = (s->w0) & 0x40;
+	bool longnameflag = s->w0 & 0x40;
 
-	p.x = (s->w1) >> 8;
-	p.y = (s->w0) >> 8;
+	p.x = s->w1 >> 8;
+	p.y = s->w0 >> 8;
 
-	p.gov = ((s->w1) >> 3) & 7; /* bits 3, 4 and 5 of w1 */
+	p.gov = (s->w1 >> 3) & 7; /* bits 3, 4 and 5 of w1 */
 	p.eco = ((s->w0) >> 8) & 7; /* bits 8, 9 and A of w0 */
 
 	if (p.gov <= 1)
 		p.eco = p.eco | 2;
 
-	p.tech = (((s->w1) >> 8) & 3) + (p.eco ^ 7);
+	p.tech = ((s->w1 >> 8) & 3) + (p.eco ^ 7);
 	p.tech += p.gov >> 1;
 	if (p.gov & 1)
 		p.tech++;
@@ -174,7 +173,7 @@ makeplanet(Seed *s) /* Generate planet info from seed */
 
 	p.pop = 4 * p.tech + p.eco + p.gov + 1;
 	p.prod = ((p.eco ^ 7) + 3) * (p.gov + 4) * p.pop * 8;
-	p.radius = 0x100 * ((((s->w2) >> 8) & 0x0F) + 11) + p.x;
+	p.radius = 0x100 * (((s->w2 >> 8) & 0x0F) + 11) + p.x;
 
 	p.goatsoupseed.a = s->w1 & 0xFF;
 	p.goatsoupseed.b = s->w1 >> 8;
@@ -182,23 +181,23 @@ makeplanet(Seed *s) /* Generate planet info from seed */
 	p.goatsoupseed.d = s->w2 >> 8;
 
 	/* Always 4 iterations of random number */
-	pair1 = 2 * (((s->w2) >> 8) & 0x1F); tweakseed(s);
-	pair2 = 2 * (((s->w2) >> 8) & 0x1F); tweakseed(s);
-	pair3 = 2 * (((s->w2) >> 8) & 0x1F); tweakseed(s);
-	pair4 = 2 * (((s->w2) >> 8) & 0x1F); tweakseed(s);
+	pair1 = 2 * ((s->w2 >> 8) & 0x1F); tweakseed(s);
+	pair2 = 2 * ((s->w2 >> 8) & 0x1F); tweakseed(s);
+	pair3 = 2 * ((s->w2 >> 8) & 0x1F); tweakseed(s);
+	pair4 = 2 * ((s->w2 >> 8) & 0x1F); tweakseed(s);
 
-	(p.name)[0] = pairs[pair1];
-	(p.name)[1] = pairs[pair1 + 1];
-	(p.name)[2] = pairs[pair2];
-	(p.name)[3] = pairs[pair2 + 1];
-	(p.name)[4] = pairs[pair3];
-	(p.name)[5] = pairs[pair3 + 1];
+	p.name[0] = pairs[pair1];
+	p.name[1] = pairs[pair1 + 1];
+	p.name[2] = pairs[pair2];
+	p.name[3] = pairs[pair2 + 1];
+	p.name[4] = pairs[pair3];
+	p.name[5] = pairs[pair3 + 1];
 
 	if (longnameflag) {
-		(p.name)[6] = pairs[pair4];
-		(p.name)[7] = pairs[pair4 + 1];
-		(p.name)[8] = 0;
-	} else (p.name)[6] = 0;
+		p.name[6] = pairs[pair4];
+		p.name[7] = pairs[pair4 + 1];
+		p.name[8] = 0;
+	} else p.name[6] = 0;
 
 	stripout(p.name, '.');
 	return p;
@@ -224,7 +223,7 @@ void
 nextgalaxy(Seed *s) /* Apply to base seed; once for galaxy 2 */
 {
 	s->w0 = twist(s->w0); /* Twice for galaxy 3, etc. */
-	s->w1 = twist(s->w1); /* Eighth application gives galaxy 1 again */
+	s->w1 = twist(s->w1); /* 8th application gives galaxy 1 again */
 	s->w2 = twist(s->w2);
 }
 
@@ -245,7 +244,7 @@ buildgalaxy(uint8_t galaxy_index)
 /**-Functions for navigation **/
 
 void
-gamejump(int i) /* Move to planet index 'i' */
+gamejump(unsigned int i) /* Move to planet index 'i' */
 {
 	curr_planet = i;
 	localmarket = genmarket(rand() % 0x100, &galaxies[i]);
@@ -259,13 +258,12 @@ distance(Planet *a, Planet *b)
 }
 
 
-int
+unsigned int
 matchplanet(char *s)
 /* Return id of the planet whose name matches passed string
 	closest to 'curr_planet' - if none return 'curr_planet' */
 {
-	int p = curr_planet;
-	unsigned int max_dist = -1, curr_dist, pcount;
+	unsigned int p = curr_planet, max_dist = -1, curr_dist, pcount;
 	for (pcount = 0; pcount < GALAXY_SIZE; ++pcount) {
 		if (stringbegins(s, galaxies[pcount].name)) {
 			curr_dist = distance(&galaxies[pcount], &galaxies[curr_planet]);
@@ -288,18 +286,19 @@ printplanet(const Planet *p, bool brief)
 	} else {
 		printf(
 			"Data on %s (%i, %i)"
-			"\nEconomy: (%i) %s"
-			"\nGovernment: (%i) %s"
+			"\nEconomy: %s"
+			"\nGovernment: %s"
 			"\nTech Level: %2i"
+			"\nPopulation: %.1f Billion"
+//			"\n(%s)"
 			"\nTurnover: %u Mcr"
-			"\nRadius: %u km"
-			"\nPopulation: %.1f Billion\n", 
-			p->name, p->x, p->y, p->eco, econnames[p->eco], 
-			p->gov, govnames[p->gov], p->tech + 1, p->prod, 
-			p->radius, (float)p->pop / 10
+			"\nRadius: %u km\n", 
+			p->name, p->x, p->y, econnames[p->eco], 
+			govnames[p->gov], p->tech + 1, (float)p->pop / 10, 
+			p->prod, p->radius
 		);
 		rnd_seed = p->goatsoupseed;
-		goat_soup("\x8E is \x96.", p);
+		goat_soup(GS_FMT, p);
 	}
 }
 
@@ -329,7 +328,7 @@ bool
 dojump(char *s) /* Jump to planet name 's' */
 {
 	unsigned int d;
-	int dest = matchplanet(s);
+	unsigned int dest = matchplanet(s);
 	if (dest == curr_planet) {
 		puts("Bad jump");
 		return false;
@@ -371,7 +370,7 @@ dogalhyp(char *s) /* Jump to next galaxy */
 bool
 doinfo(char *s)
 {
-	int dest = matchplanet(s);
+	unsigned int dest = matchplanet(s);
 	printplanet(&galaxies[dest], false);
 	return true;
 }
@@ -496,8 +495,7 @@ domarket(char *s)
 bool
 parse(char *s) /* Parse and execute command 's' */
 {
-	unsigned int i;
-	char com[MAXLEN];
+	unsigned int i; char com[MAXLEN];
 	split(s, com, ' ');
 	i = stringmatch(com, commands, N_COMMANDS);
 	if (i)
@@ -529,7 +527,7 @@ dohelp(char *s)
 	"\ninfo  <planetname> (prints info on planet)"
 	"\nmarket             (shows market prices)"
 	"\nlocal              (lists planets within 7 light years)"
-	"\ncash  <number>     (alters cash - cheating!)"
+	"\ncash  <number>     (alters cash - cheat!)"
 	"\nhold  <number>     (change cargo bay)"
 	"\nhelp               (display this text)"
 	"\nquit or ^C         (exit)"
@@ -538,7 +536,7 @@ dohelp(char *s)
 	return true;
 }
 
-int
+uint8_t
 gen_rnd_number(void)
 {
 	int a, x;
