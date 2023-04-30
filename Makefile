@@ -2,7 +2,7 @@ VERSION = 1.5.0
 PROG = txtelite
 SRCS = txtelite.c
 OBJS = $(SRCS:.c=.o)
-CFLAGS = -std=c99 -Wall -Wextra -Wno-missing-braces -pedantic -O2
+CFLAGS = -std=c99 -Wall -Wextra -pedantic -O2
 LDFLAGS = -s
 
 all: $(PROG)

@@ -47,21 +47,21 @@ static const Item commodities[] = {
 
 typedef struct {
 	uint8_t a, b, c, d;
-} FastSeed;	/* four byte random number used for planet description */
+} FastSeed;	/* 4-byte random number used for planet description */
 
 typedef struct {
 	uint16_t w0, w1, w2;
-} Seed;	/* six byte random number used as seed for planets */
+} Seed;	/* 6-byte random number used as seed for planets */
 
 typedef struct {
 	uint8_t x;
 	uint8_t y;
-	uint8_t eco;	/* These two are actually only 0-7 */
+	uint8_t eco;	/* These 2 are actually only 0-7 */
 	uint8_t gov;
 	uint8_t tech;	/* 0-16 */
 	uint8_t pop;
 	uint16_t prod;
-	uint16_t radius;	/* Not used at all */
+	uint16_t radius;	/* Unused */
 	FastSeed	goatsoupseed;
 	char name[12];
 } Planet;
@@ -71,25 +71,24 @@ typedef struct {
 	unsigned int price[N_ITEMS];
 } Market;
 
-Planet galaxies[GALAXY_SIZE];
+Planet galaxy[GALAXY_SIZE];
+Market localmarket;
 Seed seed;
 FastSeed rnd_seed;
 
-/* Player workspace */
+/* Player workspace, put in struct */
 unsigned int shipshold[N_ITEMS];	/* Contents of cargo bay */
 unsigned int curr_planet;			/* Current planet */
 uint8_t galaxy_index;				/* Galaxy number (1-8) */
 int32_t cash;
 unsigned int fuel;
 unsigned int holdspace;
-Market localmarket;			/* If declared further up, 'cash' bugs */
 
 unsigned int fuelcost = 2; /* 0.2 CR/LY */
 unsigned int maxfuel = 70; /* 7.0 LY tank */
 
-static const uint16_t base0 = 0x5A4A;
-static const uint16_t base1 = 0x0248;
-static const uint16_t base2 = 0xB753;	/* Base seed for galaxy 1 */
+/* Base seed for galaxy 1 */
+static const uint16_t base0 = 0x5A4A, base1 = 0x0248, base2 = 0xB753;
 
 static const char *unitnames[] = {"t", "kg", "g"};
 
@@ -114,7 +113,7 @@ static const char *govnames[] = {
 	"Democracy",
 	"Corporate State"
 };
-static const char *econnames[] = {
+static const char *econames[] = {
 	"Rich Ind",
 	"Average Ind",
 	"Poor Ind",

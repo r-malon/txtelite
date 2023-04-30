@@ -125,7 +125,7 @@ gamesell(unsigned int i, unsigned int a)
 }
 
 Market
-genmarket(uint8_t fluct, const Planet *p)
+makemarket(uint8_t fluct, const Planet *p)
 {
 	Market market;
 	unsigned int i;
@@ -134,14 +134,14 @@ genmarket(uint8_t fluct, const Planet *p)
 		signed int product = p->eco * commodities[i].gradient;
 		signed int changing = fluct & commodities[i].mask;
 		q = commodities[i].basequant + changing - product;
-		q = q & 0xFF;
+		q &= 0xFF;
 		if (q & 0x80)
 			q = 0; /* Clip to positive 8-bit */
 
 		market.quantity[i] = (uint16_t)(q & 0x3F); /* Mask to 6 bits */
 
 		q = commodities[i].baseprice + changing + product;
-		q = q & 0xFF;
+		q &= 0xFF;
 		market.price[i] = (uint16_t)(q * 4);
 	}
 	/* Override to force non-availability */
@@ -159,14 +159,13 @@ makeplanet(Seed *s) /* Generate planet info from seed */
 	p.x = s->w1 >> 8;
 	p.y = s->w0 >> 8;
 
-	p.gov = (s->w1 >> 3) & 7; /* bits 3, 4 and 5 of w1 */
-	p.eco = ((s->w0) >> 8) & 7; /* bits 8, 9 and A of w0 */
+	p.gov = (s->w1 >> 3) & 7;	/* bits 3, 4 and 5 of w1 */
+	p.eco = (s->w0 >> 8) & 7;	/* bits 8, 9 and A of w0 */
 
 	if (p.gov <= 1)
-		p.eco = p.eco | 2;
+		p.eco |= 2;
 
-	p.tech = ((s->w1 >> 8) & 3) + (p.eco ^ 7);
-	p.tech += p.gov >> 1;
+	p.tech = ((s->w1 >> 8) & 3) + (p.eco ^ 7) + (p.gov >> 1);
 	if (p.gov & 1)
 		p.tech++;
 	/* C simulation of 6502's LSR then ADC */
@@ -216,14 +215,14 @@ lrotate(uint16_t x) /* rotate 8-bit(?) number leftwards */
 uint16_t
 twist(uint16_t x)
 {
-	return (uint16_t)((0x100 * lrotate(x >> 8)) + lrotate(x & 0xFF));
+	return 0x100 * lrotate(x >> 8) + lrotate(x & 0xFF);
 }
 
 void
 nextgalaxy(Seed *s) /* Apply to base seed; once for galaxy 2 */
 {
-	s->w0 = twist(s->w0); /* Twice for galaxy 3, etc. */
-	s->w1 = twist(s->w1); /* 8th application gives galaxy 1 again */
+	s->w0 = twist(s->w0);	/* Twice for galaxy 3, etc. */
+	s->w1 = twist(s->w1);	/* 8th application gives galaxy 1 again */
 	s->w2 = twist(s->w2);
 }
 
@@ -236,9 +235,9 @@ buildgalaxy(uint8_t galaxy_index)
 	seed.w0 = base0; seed.w1 = base1; seed.w2 = base2;
 	for (galcount = 1; galcount < galaxy_index; ++galcount)
 		nextgalaxy(&seed);
-	/* Put galaxy data into array of structures */  
+	/* Put galaxy data into array of structs */  
 	for (pcount = 0; pcount < GALAXY_SIZE; ++pcount)
-		galaxies[pcount] = makeplanet(&seed);
+		galaxy[pcount] = makeplanet(&seed);
 }
 
 /**-Functions for navigation **/
@@ -247,7 +246,7 @@ void
 gamejump(unsigned int i) /* Move to planet index 'i' */
 {
 	curr_planet = i;
-	localmarket = genmarket(rand() % 0x100, &galaxies[i]);
+	localmarket = makemarket(rand() % 0x100, &galaxy[i]);
 }
 
 unsigned int
@@ -265,8 +264,8 @@ matchplanet(char *s)
 {
 	unsigned int p = curr_planet, max_dist = -1, curr_dist, pcount;
 	for (pcount = 0; pcount < GALAXY_SIZE; ++pcount) {
-		if (stringbegins(s, galaxies[pcount].name)) {
-			curr_dist = distance(&galaxies[pcount], &galaxies[curr_planet]);
+		if (stringbegins(s, galaxy[pcount].name)) {
+			curr_dist = distance(&galaxy[pcount], &galaxy[curr_planet]);
 		 	if (curr_dist < max_dist) {
 		 		max_dist = curr_dist;
 				p = pcount;
@@ -282,7 +281,7 @@ printplanet(const Planet *p, bool brief)
 	if (brief) {
 		printf("%12s TL: %2i %12s %16s", 
 			p->name, p->tech + 1, 
-			econnames[p->eco], govnames[p->gov]);
+			econames[p->eco], govnames[p->gov]);
 	} else {
 		printf(
 			"Data on %s (%i, %i)"
@@ -290,10 +289,10 @@ printplanet(const Planet *p, bool brief)
 			"\nGovernment: %s"
 			"\nTech Level: %2i"
 			"\nPopulation: %.1f Billion"
-//			"\n(%s)"
+//			"\n(%s)"	// Species
 			"\nTurnover: %u Mcr"
 			"\nRadius: %u km\n", 
-			p->name, p->x, p->y, econnames[p->eco], 
+			p->name, p->x, p->y, econames[p->eco], 
 			govnames[p->gov], p->tech + 1, (float)p->pop / 10, 
 			p->prod, p->radius
 		);
@@ -311,13 +310,13 @@ dolocal(char *s)
 	(void)(&s);
 	printf("Galaxy #%i\n", galaxy_index);
 	for (pcount = 0; pcount < GALAXY_SIZE; ++pcount) {
-		d = distance(&galaxies[pcount], &galaxies[curr_planet]);
+		d = distance(&galaxy[pcount], &galaxy[curr_planet]);
 		if (d <= maxfuel) {
 			if (d <= fuel)
 				putchar('*');
 			else
 				putchar('-');
-			printplanet(&galaxies[pcount], true);
+			printplanet(&galaxy[pcount], true);
 			printf("  (%.1fLY)\n", (float)d / 10);
 		}
 	}
@@ -327,20 +326,19 @@ dolocal(char *s)
 bool
 dojump(char *s) /* Jump to planet name 's' */
 {
-	unsigned int d;
-	unsigned int dest = matchplanet(s);
+	unsigned int d, dest = matchplanet(s);
 	if (dest == curr_planet) {
 		puts("Bad jump");
 		return false;
 	}
-	d = distance(&galaxies[dest], &galaxies[curr_planet]);
+	d = distance(&galaxy[dest], &galaxy[curr_planet]);
 	if (d > fuel) {
 		puts("Jump too far");
 		return false;
 	}
 	fuel -= d;
 	gamejump(dest);
-	printplanet(&galaxies[curr_planet], false);
+	printplanet(&galaxy[curr_planet], false);
 	return true;
 }
 
@@ -371,7 +369,7 @@ bool
 doinfo(char *s)
 {
 	unsigned int dest = matchplanet(s);
-	printplanet(&galaxies[dest], false);
+	printplanet(&galaxy[dest], false);
 	return true;
 }
 
@@ -616,7 +614,7 @@ main(void)
 	buildgalaxy(galaxy_index);
 
 	curr_planet = Lave_INDEX;	/* Don't use jump */
-	localmarket = genmarket(0x00, &galaxies[Lave_INDEX]);
+	localmarket = makemarket(0x00, &galaxy[Lave_INDEX]);
 	fuel = maxfuel;
 
 	puts("Welcome to Text Elite 1.5.\n");
