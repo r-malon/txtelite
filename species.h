@@ -1,4 +1,4 @@
-/*
+/* TODO */
 static const char *inhab_sizes[] = {
 	"Large ", 
 	"Fierce ", 
@@ -30,4 +30,3 @@ static const char *inhab_races[] = {
 	"Feline", 
 	"Insect"
 };
-*/

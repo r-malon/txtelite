@@ -20,13 +20,16 @@ void
 tweakseed(Seed *s)
 {
 	uint16_t temp;
-	temp = s->w0 + s->w1 + s->w2; /* 2-byte arithmetic */
+	/* 2-byte arithmetic */
+	temp = s->w0 + s->w1 + s->w2;
 	s->w0 = s->w1;
 	s->w1 = s->w2;
 	s->w2 = temp;
 }
 
-/**-String functions for text interface **/
+/*
+ * String functions for text interface
+ */
 
 void
 stripout(char *s, char c) /* Remove every 'c' from string 's' */
@@ -88,7 +91,9 @@ split(char *s, char *t, char c)
 	s[j] = 0;
 }
 
-/**-Functions for stock market **/
+/*
+ * Functions for stock market
+ */
 
 unsigned int
 gamebuy(unsigned int i, unsigned int a)
@@ -203,8 +208,10 @@ makeplanet(Seed *s) /* Generate planet info from seed */
 }
 
 
-/**+Generate galaxy **/
-/* Functions for galactic hyperspace */
+/*
+ * Generate galaxy
+ * Functions for galactic hyperspace
+ */
 
 uint16_t
 lrotate(uint16_t x) /* rotate 8-bit(?) number leftwards */
@@ -240,7 +247,9 @@ buildgalaxy(uint8_t galaxy_index)
 		galaxy[pcount] = makeplanet(&seed);
 }
 
-/**-Functions for navigation **/
+/*
+ * Functions for navigation
+ */
 
 void
 gamejump(unsigned int i) /* Move to planet index 'i' */
@@ -255,7 +264,6 @@ distance(Planet *a, Planet *b)
 	int xdelta = a->x - b->x, ydelta = a->y - b->y;
 	return 4 * sqrt(xdelta * xdelta + ydelta * ydelta / 4);
 }
-
 
 unsigned int
 matchplanet(char *s)
@@ -301,7 +309,9 @@ printplanet(const Planet *p, bool brief)
 	}
 }
 
-/**-Various command functions **/
+/*
+ * Various command functions
+ */
 
 bool
 dolocal(char *s)
@@ -521,15 +531,15 @@ dohelp(char *s)
 	"\nfuel  <amount>     (buy amount light years of fuel)"
 	"\njump  <planetname> (limited by fuel)"
 	"\nsneak <planetname> (any distance - no fuel cost)"
-	"\ngalhyp             (jumps to next galaxy)"
-	"\ninfo  <planetname> (prints info on planet)"
-	"\nmarket             (shows market prices)"
-	"\nlocal              (lists planets within 7 light years)"
-	"\ncash  <number>     (alters cash - cheat!)"
+	"\ngalhyp             (jump to next galaxy)"
+	"\ninfo  <planetname> (print info on planet)"
+	"\nmarket             (show market prices)"
+	"\nlocal              (list planets within 7 light years)"
+	"\ncash  <number>     (alter cash - cheat!)"
 	"\nhold  <number>     (change cargo bay)"
 	"\nhelp               (display this text)"
 	"\nquit or ^C         (exit)"
-	"\n\nAbbreviations allowed e.g. b fo 5 = buy food 5"
+	"\n\nAbbreviations allowed, e.g. b fo 5 = buy food 5"
 	);
 	return true;
 }
