@@ -133,11 +133,11 @@ Market
 makemarket(uint8_t fluct, const Planet *p)
 {
 	Market market;
+	signed int q, product, changing;
 	unsigned int i;
 	for (i = 0; i < N_ITEMS; i++) {
-		signed int q; 
-		signed int product = p->eco * commodities[i].gradient;
-		signed int changing = fluct & commodities[i].mask;
+		product = p->eco * commodities[i].gradient;
+		changing = fluct & commodities[i].mask;
 		q = commodities[i].basequant + changing - product;
 		q &= 0xFF;
 		if (q & 0x80)
@@ -237,14 +237,14 @@ nextgalaxy(Seed *s) /* Apply to base seed; once for galaxy 2 */
 void
 buildgalaxy(uint8_t galaxy_index)
 {
-	unsigned int galcount, pcount;
+	unsigned int i;
 	/* Initialise seed for galaxy 1 */
 	seed.w0 = base0; seed.w1 = base1; seed.w2 = base2;
-	for (galcount = 1; galcount < galaxy_index; ++galcount)
+	for (i = 1; i < galaxy_index; ++i)
 		nextgalaxy(&seed);
 	/* Put galaxy data into array of structs */  
-	for (pcount = 0; pcount < GALAXY_SIZE; ++pcount)
-		galaxy[pcount] = makeplanet(&seed);
+	for (i = 0; i < GALAXY_SIZE; ++i)
+		galaxy[i] = makeplanet(&seed);
 }
 
 /*
@@ -270,13 +270,13 @@ matchplanet(char *s)
 /* Return id of the planet whose name matches passed string
 	closest to 'curr_planet' - if none return 'curr_planet' */
 {
-	unsigned int p = curr_planet, max_dist = -1, curr_dist, pcount;
-	for (pcount = 0; pcount < GALAXY_SIZE; ++pcount) {
-		if (stringbegins(s, galaxy[pcount].name)) {
-			curr_dist = distance(&galaxy[pcount], &galaxy[curr_planet]);
+	unsigned int p = curr_planet, max_dist = -1, curr_dist, i;
+	for (i = 0; i < GALAXY_SIZE; ++i) {
+		if (stringbegins(s, galaxy[i].name)) {
+			curr_dist = distance(&galaxy[i], &galaxy[curr_planet]);
 		 	if (curr_dist < max_dist) {
 		 		max_dist = curr_dist;
-				p = pcount;
+				p = i;
 			}
 		}
 	}
@@ -316,17 +316,17 @@ printplanet(const Planet *p, bool brief)
 bool
 dolocal(char *s)
 {
-	unsigned int d, pcount;
+	unsigned int d, i;
 	(void)(&s);
 	printf("Galaxy #%i\n", galaxy_index);
-	for (pcount = 0; pcount < GALAXY_SIZE; ++pcount) {
-		d = distance(&galaxy[pcount], &galaxy[curr_planet]);
+	for (i = 0; i < GALAXY_SIZE; ++i) {
+		d = distance(&galaxy[i], &galaxy[curr_planet]);
 		if (d <= maxfuel) {
 			if (d <= fuel)
 				putchar('*');
 			else
 				putchar('-');
-			printplanet(&galaxy[pcount], true);
+			printplanet(&galaxy[i], true);
 			printf("  (%.1fLY)\n", (float)d / 10);
 		}
 	}
